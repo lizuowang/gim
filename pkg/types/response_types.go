@@ -21,8 +21,8 @@ type Response struct {
 type AData map[string]interface{}
 
 type ResponseData struct {
-	S int   `json:"s"`
-	A AData `json:"a"`
+	S int    `json:"s"`
+	A *AData `json:"a"`
 }
 
 // 系统信息
@@ -59,7 +59,7 @@ func (r *Response) Bytes() (headBytes []byte, err error) {
 }
 
 // 响应数据数据
-func NewResponseData(a AData, params ...int) *ResponseData {
+func NewResponseData(a *AData, params ...int) *ResponseData {
 
 	s := 1
 	if len(params) > 0 {
@@ -70,19 +70,19 @@ func NewResponseData(a AData, params ...int) *ResponseData {
 
 // 组装响应数据
 func NewCtrlResponseData(ad interface{}, mol, ctrl string) *ResponseData {
-	adata := HandleAData(ad, mol, ctrl)
-	return NewResponseData(adata)
+	aData := HandleAData(ad, mol, ctrl)
+	return NewResponseData(aData)
 }
 
 // 组装响应数据
 func NewMolResponseData(ad interface{}, mol string) *ResponseData {
-	adata := HandleMolAdata(ad, mol)
-	return NewResponseData(adata)
+	aData := HandleMolAData(ad, mol)
+	return NewResponseData(aData)
 }
 
 // 获取系统信息
-func NewSystem(msg string, ty ...int) (system System) {
-	system = System{
+func NewSystem(msg string, ty ...int) (system *System) {
+	system = &System{
 		// Sys: &SysTime{Time: time.Now().Unix()},
 	}
 	if msg != "" {
@@ -97,20 +97,20 @@ func NewSystem(msg string, ty ...int) (system System) {
 	return
 }
 
-func NewErrAData(msg string, ty int) (errAData AData) {
-	errAData = AData{"system": NewSystem(msg, ty)}
+func NewErrAData(msg string, ty int) (errAData *AData) {
+	errAData = &AData{"system": NewSystem(msg, ty)}
 	return
 }
 
 // 组装数据
-func HandleAData(ad any, mol, ctrl string) (aData AData) {
+func HandleAData(ad any, mol, ctrl string) (aData *AData) {
 
-	aData = AData{mol: AData{ctrl: ad}}
+	aData = &AData{mol: &AData{ctrl: ad}}
 	return
 }
 
 // 组装数据
-func HandleMolAdata(ad interface{}, mol string) (aData AData) {
-	aData = AData{mol: ad}
+func HandleMolAData(ad interface{}, mol string) (aData *AData) {
+	aData = &AData{mol: ad}
 	return
 }

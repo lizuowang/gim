@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -80,7 +81,7 @@ func main() {
 	etcd := etcd_client.GetClient()
 
 	handler := &Handler{}
-	handler.HandleMsg = handleMsg
+	handler.HandleRequestMsg = handleRequestMsg
 	wsConf := &ws.WsConfig{
 		RunMode:     ws.RunModeRedis,
 		RedisPrefix: "test",
@@ -136,49 +137,57 @@ type Handler struct {
 	ws.Handler
 }
 
-func (h *Handler) OnMessage(socket *gws.Conn, message *gws.Message) {
-	defer message.Close()
-	// client, ok := ws.ClientM.GetClientByConn(socket)
-	// if ok {
-	// 	client.SendMsg(message.Bytes())
-	// }
+// func (h *Handler) OnMessage(socket *gws.Conn, message *gws.Message) {
+// 	defer message.Close()
+// 	// client, ok := ws.ClientM.GetClientByConn(socket)
+// 	// if ok {
+// 	// 	client.SendMsg(message.Bytes())
+// 	// }
 
-	// resp := types.NewResponse("123", "getName", 1, &types.ResponseData{
-	// 	S: 1,
-	// 	A: types.AData{"tttt": "ddddd"},
-	// })
-	// ws.TGroupM.SendMessageToTGroup("ccc", &types.GroupMsg{
-	// 	Response: resp,
-	// })
+// 	// resp := types.NewResponse("123", "getName", 1, &types.ResponseData{
+// 	// 	S: 1,
+// 	// 	A: types.AData{"tttt": "ddddd"},
+// 	// })
+// 	// ws.TGroupM.SendMessageToTGroup("ccc", &types.GroupMsg{
+// 	// 	Response: resp,
+// 	// })
 
+// 	client, ok := ws.ClientM.GetClientByConn(socket)
+// 	if ok {
+// 		client.InTGroup("ccc")
+// 		// client.SendResponseData(resData, "101000001", "101000001", types.MSG_TYPE_RESPONSE)
+// 	}
+
+// 	resData := &types.ResponseData{
+// 		S: 1,
+// 		A: types.AData{"tttt": "私聊"},
+// 	}
+
+// 	ws.Proxy.SendResDataToUserByTgid("123", "ccc", resData)
+
+// 	resData = &types.ResponseData{
+// 		S: 1,
+// 		A: types.AData{"tttt": "广播"},
+// 	}
+
+// 	ws.Proxy.SendResDataToGroup("ccc", resData, "101000001")
+
+// }
+
+func (h *Handler) OnOpen(socket *gws.Conn) {
 	client, ok := ws.ClientM.GetClientByConn(socket)
 	if ok {
 		client.InTGroup("ccc")
 		// client.SendResponseData(resData, "101000001", "101000001", types.MSG_TYPE_RESPONSE)
 	}
-
-	resData := &types.ResponseData{
-		S: 1,
-		A: types.AData{"tttt": "私聊"},
-	}
-
-	ws.Proxy.SendResDataToUserByTgid("123", "ccc", resData)
-
-	resData = &types.ResponseData{
-		S: 1,
-		A: types.AData{"tttt": "广播"},
-	}
-
-	ws.Proxy.SendResDataToGroup("ccc", resData, "101000001")
-
 }
 
-func (h *Handler) OnOpen(socket *gws.Conn) {
+func handleRequestMsg(client *ws.Client, request *types.Request) (aData *types.AData, err error) {
 
-}
-
-func handleMsg(client *ws.Client, request *types.Request) (aData types.AData, err error) {
-
-	aData = types.AData{"tttt": "响应"}
+	err = errors.New("错误test")
+	aData = types.HandleAData("tttt", "mol", "ctrl")
+	ws.Proxy.SendResDataToUserByTgid("123", "ccc", types.NewResponseData(aData))
+	ws.Proxy.SendResDataToUser("123", types.NewResponseData(aData))
+	ws.Proxy.SendResDataToGroup("ccc", types.NewResponseData(aData), "")
 	return
 }

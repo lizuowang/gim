@@ -15,7 +15,7 @@ import (
 
 type Handler struct {
 	gws.BuiltinEventHandler
-	HandleMsg func(client *Client, request *types.Request) (aData types.AData, err error) //处理消息
+	HandleRequestMsg func(client *Client, request *types.Request) (aData *types.AData, err error) //处理消息
 }
 
 func (c *Handler) OnPing(socket *gws.Conn, payload []byte) {
@@ -47,7 +47,7 @@ func (c *Handler) OnMessage(socket *gws.Conn, gwsMsg *gws.Message) {
 	}
 
 	// 未设置处理消息函数
-	if c.HandleMsg == nil {
+	if c.HandleRequestMsg == nil {
 		logger.L.Error("ws.OnMessage 未设置处理消息函数 ", zap.String("uid", client.GetKey()))
 		im_err := im_err.NewImError(im_err.ErrNoHandleMsg)
 		client.SendErr(im_err.Msg, 0, "", "")
@@ -68,11 +68,12 @@ func (c *Handler) OnMessage(socket *gws.Conn, gwsMsg *gws.Message) {
 
 	//处理消息
 	var (
-		aData types.AData
+		aData *types.AData
 	)
-	aData, err = c.HandleMsg(client, request)
+	aData, err = c.HandleRequestMsg(client, request)
 	if err != nil {
-		aData = types.NewErrAData(err.Error(), 0)
+		client.SendErr(err.Error(), 0, request.Seq, request.Cmd)
+		return
 	}
 
 	//组装响应数据
