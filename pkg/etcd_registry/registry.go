@@ -99,7 +99,10 @@ func (s *ServiceRegister) Close() error {
 	// 设置状态为关闭
 	s.status = 3
 	//撤销租约
-	if _, err := s.cli.Revoke(context.Background(), s.leaseID); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if _, err := s.cli.Revoke(ctx, s.leaseID); err != nil {
+		log.Println("etcd_registry 撤销租约失败", zap.String("service_name", s.name), zap.Error(err))
 		return err
 	}
 	logger.L.Info("注销服务", zap.String("service_name", s.name), zap.String("addr", s.Addr))
