@@ -36,6 +36,8 @@ type WsMsgList struct {
 // 系统信息
 type SysInfo struct {
 	NumGoroutine int            `json:"numGoroutine"` //goroutine数量
+	CPUPercent   float64        `json:"cpuPercent"`   //cpu 使用率
+	MemPercent   float64        `json:"memPercent"`   //内存使用率
 	NumCPU       int            `json:"numCPU"`       //cpu 数量
 	ManagerInfo  *WsManagerInfo `json:"managerInfo"`
 	MsgList      *WsMsgList     `json:"msgList"`    //队列消息

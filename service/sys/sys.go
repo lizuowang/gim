@@ -3,6 +3,9 @@ package sys
 import (
 	"runtime"
 
+	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/mem"
+
 	"github.com/lizuowang/gim/pkg/types"
 	rpcClient "github.com/lizuowang/gim/service/api/client"
 	"github.com/lizuowang/gim/service/msg_queue"
@@ -20,6 +23,23 @@ func GetSysInfo() (managerInfo *types.SysInfo) {
 		ConsumeNum: msg_queue.GetConsumeLen(),
 		MsgNum:     msg_queue.GetMsgListLen(),
 	}
+
+	// 获取 CPU 使用率
+	cpuPercent, err := cpu.Percent(0, false)
+	if err != nil {
+		managerInfo.CPUPercent = 0
+	} else {
+		managerInfo.CPUPercent = cpuPercent[0]
+	}
+
+	// 获取内存使用率
+	vmStat, err := mem.VirtualMemory()
+	if err != nil {
+		managerInfo.MemPercent = 0
+	} else {
+		managerInfo.MemPercent = vmStat.UsedPercent
+	}
+
 	managerInfo.SubMsgList = ws.GetSubMsgList()
 	managerInfo.Name = ws.ServerName
 	return
