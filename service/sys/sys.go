@@ -45,6 +45,7 @@ func GetSysCollectInfo() (sysCollectInfo *types.SycCollectInfo) {
 	}
 
 	sysCollectInfo.NodeList = allSysInfo
+	sysCollectInfo.MsgList.MsgNum = 0
 	for _, sysInfo := range allSysInfo {
 		sysCollectInfo.NodeNum++
 		sysCollectInfo.Version = sysInfo.Version
@@ -53,7 +54,10 @@ func GetSysCollectInfo() (sysCollectInfo *types.SycCollectInfo) {
 
 		// 队列消息数
 		sysCollectInfo.MsgList.ConsumeNum += sysInfo.MsgList.ConsumeNum
-		sysCollectInfo.MsgList.MsgNum += sysInfo.MsgList.MsgNum
+		// 消息总数 取最大值
+		if sysInfo.MsgList.MsgNum > sysCollectInfo.MsgList.MsgNum {
+			sysCollectInfo.MsgList.MsgNum = sysInfo.MsgList.MsgNum
+		}
 
 		// 客户端数
 		sysCollectInfo.ManagerInfo.ClientsLen += sysInfo.ManagerInfo.ClientsLen
