@@ -7,7 +7,7 @@ require (
 	github.com/cloudwego/kitex v0.11.3
 	github.com/lxzan/gws v1.8.8
 	github.com/oklog/ulid/v2 v2.1.0
-	github.com/redis/go-redis/v9 v9.6.2
+	github.com/redis/go-redis/v9 v9.7.0
 	github.com/shirou/gopsutil/v3 v3.24.5
 	go.etcd.io/etcd/api/v3 v3.5.12
 	go.etcd.io/etcd/client/v3 v3.5.12

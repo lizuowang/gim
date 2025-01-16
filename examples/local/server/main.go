@@ -39,7 +39,7 @@ func main() {
 	gim.InitLogger(logConfig)
 
 	redisConf := &redis.Options{
-		Addr:         "192.168.1.191:1099",
+		Addr:         "192.168.1.191:1079",
 		Password:     "123456",
 		DB:           0,
 		PoolSize:     10,
