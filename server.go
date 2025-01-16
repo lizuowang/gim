@@ -3,7 +3,9 @@ package gim
 import (
 	"fmt"
 	"log"
+	"os"
 
+	"github.com/cloudwego/kitex/pkg/klog"
 	"github.com/lizuowang/gim/pkg/etcd_client"
 	"github.com/lizuowang/gim/pkg/etcd_registry"
 	"github.com/lizuowang/gim/pkg/logger"
@@ -18,6 +20,7 @@ var (
 	IsInitLogger bool
 	etcdRegistry *etcd_registry.ServiceRegister
 	runMode      ws.RunMode
+	rpcFile      *os.File
 )
 
 func InitServer(config *ws.WsConfig) {
@@ -57,16 +60,29 @@ func InitLogger(config *logger.LogConfig) *zap.Logger {
 	if err != nil {
 		panic(fmt.Errorf("初始化日志失败: %s ", err))
 	}
-	// L()：获取全局logger
-
-	// 调用内核的Sync方法，刷新所有缓冲的日志条目。
-	// 应用程序应该注意在退出之前调用Sync。
-	// defer logger.Sync()
 
 	logger.L.Info("开始 日志初始化")
 
 	IsInitLogger = true
+
+	InitKLog(config)
+
 	return logger.L
+}
+
+// 初始化klog
+func InitKLog(config *logger.LogConfig) {
+	// 路径不存在时 创建路径
+	if _, err := os.Stat(config.FilePath); os.IsNotExist(err) {
+		os.MkdirAll(config.FilePath, os.ModePerm)
+	}
+
+	rpcFile, err := os.OpenFile(config.FilePath+"rpc.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Println("打开日志文件失败", err)
+	}
+
+	klog.SetOutput(rpcFile)
 }
 
 // CloseServer 关闭服务
@@ -82,4 +98,6 @@ func CloseServer() {
 
 	//关闭日志系统
 	logger.OnClose()
+
+	rpcFile.Close()
 }

@@ -2,18 +2,15 @@ package logger
 
 import (
 	"log"
-	"os"
 	"time"
 
-	"github.com/cloudwego/kitex/pkg/klog"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 var (
-	L       *zap.Logger
-	rpcFile *os.File
+	L *zap.Logger
 )
 
 type LogConfig struct {
@@ -82,24 +79,10 @@ func InitLogger(config *LogConfig) (err error) {
 
 	// 替换zap包中全局的logger实例，后续在其他包中只需使用zap.L()调用即可
 	zap.ReplaceGlobals(L)
-
-	// 路径不存在时 创建路径
-	if _, err := os.Stat(config.FilePath); os.IsNotExist(err) {
-		os.MkdirAll(config.FilePath, os.ModePerm)
-	}
-
-	rpcFile, err := os.OpenFile(config.FilePath+"rpc.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		log.Println("打开日志文件失败", err)
-	}
-
-	klog.SetOutput(rpcFile)
-
 	return
 }
 
 func OnClose() {
 	L.Sync()
-	rpcFile.Close()
 	log.Println("关闭日志系统")
 }
