@@ -22,6 +22,7 @@ func GetSysInfo() (managerInfo *types.SysInfo) {
 	managerInfo.MsgList = &types.WsMsgList{
 		ConsumeNum: msg_queue.GetConsumeLen(),
 		MsgNum:     msg_queue.GetMsgListLen(),
+		FreeCNum:   msg_queue.GetFreeCNum(),
 	}
 
 	// 获取 CPU 使用率

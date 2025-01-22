@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/lizuowang/gim/pkg/logger"
@@ -16,20 +17,36 @@ import (
 
 type Consumer struct {
 	quitChan chan bool
-	idx      int64
+	idx      int
 }
 
 var (
-	list_key            = "_gim:queue:common:msg:list"
-	maxGoroutines       = 20 //消费者最大数量
-	consumeNum    int64 = 0
+	list_key      = "_gim:queue:common:msg:list"
+	maxGoroutines = 20 //消费者最大数量
 	mu            sync.Mutex
 	consumers     = make(map[*Consumer]bool)
 	mqConfig      *MqConfig //配置
+	freeCNum      int32     //空闲协程数量
+	freeTimes     int       //空闲次数
 )
 
+// 增加空闲协程数量
+func incrFreeCNum() {
+	atomic.AddInt32(&freeCNum, 1)
+}
+
+// 减少空闲协程数量
+func decrFreeCNum() {
+	atomic.AddInt32(&freeCNum, -1)
+}
+
+// 获取空闲协程数量
+func GetFreeCNum() int32 {
+	return atomic.LoadInt32(&freeCNum)
+}
+
 // 实例化一个消费者
-func NewConsumer(conNum int64) *Consumer {
+func NewConsumer(conNum int) *Consumer {
 	return &Consumer{
 		quitChan: make(chan bool),
 		idx:      conNum,
@@ -42,11 +59,17 @@ func (c *Consumer) consumeMsg() {
 		mu.Lock()
 		delete(consumers, c)
 		mu.Unlock()
-		logger.L.Info("Consumer.consumeMsg stop ", zap.Int64("idx", c.idx), zap.Int64("num", c.idx))
+		logger.L.Info("Consumer.consumeMsg stop ", zap.Int("idx", c.idx), zap.Int("num", len(consumers)))
 
 	}()
 
-	logger.L.Info("Consumer.consumeMsg start ", zap.Int64("num", c.idx))
+	logger.L.Info("Consumer.consumeMsg start ", zap.Int("num", c.idx))
+
+	// 增加空闲协程数量
+	incrFreeCNum()
+
+	// 减少空闲协程数量
+	defer decrFreeCNum()
 
 	for {
 		select {
@@ -54,15 +77,19 @@ func (c *Consumer) consumeMsg() {
 			return
 		default:
 			msg, err := mqConfig.RedisClient.BLPop(context.Background(), time.Second*5, list_key).Result()
+			// 减少空闲协程数量
+			decrFreeCNum()
 			if err != nil {
 				if err != redis.Nil {
-					logger.L.Error("Consumer.consumeMsg error", zap.Int64("idx", c.idx), zap.Error(err))
+					logger.L.Error("Consumer.consumeMsg error", zap.Int("idx", c.idx), zap.Error(err))
 					time.Sleep(time.Second * 1)
 				}
 			} else if msg != nil {
 				c.handleMsg(msg[1])
 			}
 
+			// 增加空闲协程数量
+			incrFreeCNum()
 		}
 	}
 }
@@ -107,7 +134,7 @@ func (c *Consumer) handleMsg(msg string) {
 func (c *Consumer) stop() {
 	defer func() {
 		if r := recover(); r != nil {
-			logger.L.Error("msg.Consumer.stop error ", zap.Int64("idx", c.idx), zap.Any("error", r))
+			logger.L.Error("msg.Consumer.stop error ", zap.Int("idx", c.idx), zap.Any("error", r))
 		}
 	}()
 	close(c.quitChan)
@@ -159,12 +186,20 @@ func manageConsumer() time.Duration {
 	}
 
 	length := GetMsgListLen()
+	freeCNum := GetFreeCNum()
 
-	if length >= 1 && consumerLength < maxGoroutines { //启动一个消费协程
+	if length >= 2 && consumerLength < maxGoroutines { //启动一个消费协程
 		startMultiConsumer(3)
-	} else if length < 1 && consumerLength > 2 { //关闭一个消费协程
-		stopConsumer()
-		sleepTime = time.Second * 5
+		freeTimes = 0
+	} else if length < 1 && consumerLength > 2 && freeCNum > 0 { //关闭一个消费协程
+		freeTimes++
+		if freeTimes > 60 {
+			stopConsumer()
+			sleepTime = time.Second * 5
+			freeTimes = 0
+		}
+	} else {
+		freeTimes = 0
 	}
 
 	return sleepTime
@@ -173,8 +208,7 @@ func manageConsumer() time.Duration {
 // 启动多个消费者
 func startMultiConsumer(num int) {
 	for i := 0; i < num; i++ {
-		consumeNum++
-		consumer := NewConsumer(consumeNum)
+		consumer := NewConsumer(len(consumers) + 1)
 		consumers[consumer] = true
 		go consumer.consumeMsg()
 	}

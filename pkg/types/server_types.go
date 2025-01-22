@@ -31,6 +31,7 @@ type WsManagerInfo struct {
 type WsMsgList struct {
 	MsgNum     int64 `json:"msgNum"`     //堆积消息数量
 	ConsumeNum int   `json:"consumeNum"` //消费者数量
+	FreeCNum   int32 `json:"freeCNum"`   //空闲写成书数量
 }
 
 // 系统信息

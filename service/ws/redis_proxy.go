@@ -31,23 +31,23 @@ var (
 type RedisProxy struct {
 	LocalProxy
 	RedisClient *redis.Client
-	Idx         uint64
-	ConsumerGm  map[uint64]*subMsgConsumer
+	ConsumerGm  map[*subMsgConsumer]bool
 	MsgCh       <-chan *redis.Message
 	Lock        sync.RWMutex
+	freeTimes   int // 空闲次数
 }
 
 type subMsgConsumer struct {
 	Ctx    context.Context
 	Cancel context.CancelFunc
-	Idx    uint64
+	Idx    int
 }
 
 // 实例化
 func NewRedisProxy(redisClient *redis.Client) *RedisProxy {
 	redisProxy = &RedisProxy{
 		RedisClient: redisClient,
-		ConsumerGm:  make(map[uint64]*subMsgConsumer),
+		ConsumerGm:  make(map[*subMsgConsumer]bool),
 	}
 	go redisProxy.SubV2()
 	return redisProxy
@@ -77,35 +77,45 @@ func (rp *RedisProxy) SubV2() {
 
 	// 管理消费
 	for {
-		time.Sleep(time.Second * 5)
-
-		//消息队列长度 大于5 添加一个消费者
-		if len(rp.ConsumerGm) < subMsgConsumerMax && len(rp.MsgCh) >= 5 {
-			rp.AddConsumer()
-			continue
-		}
-
-		//如果没有消费者 则启动一个消费者
-		if len(rp.ConsumerGm) == 0 {
-			rp.AddConsumer()
-			continue
-		}
-
-		// 没有消息 减少一个消费者
-		if len(rp.ConsumerGm) > subMsgConsumerMin && len(rp.MsgCh) == 0 {
-			for _, smc := range rp.ConsumerGm {
-				smc.Stop()
-				break
-			}
-			continue
-		}
-
+		sTime := rp.consumerManage()
+		time.Sleep(sTime)
 	}
 
 }
 
+// 消费者管理
+func (rp *RedisProxy) consumerManage() time.Duration {
+	rp.Lock.Lock()
+	defer rp.Lock.Unlock()
+
+	consumerLen := len(rp.ConsumerGm)
+	chLen := len(rp.MsgCh)
+	//消息队列长度 大于5 添加一个消费者
+	if consumerLen < subMsgConsumerMax && chLen >= 5 {
+		rp.AddConsumer()
+		rp.freeTimes = 0
+	} else if consumerLen == 0 { //如果没有消费者 则启动一个消费者
+		rp.AddConsumer()
+		rp.freeTimes = 0
+
+	} else if consumerLen > subMsgConsumerMin && chLen == 0 { // 没有消息 减少一个消费者
+		rp.freeTimes++
+		if rp.freeTimes > 30 {
+			for smc := range rp.ConsumerGm {
+				smc.Stop()
+				break
+			}
+			rp.freeTimes = 0
+		}
+	} else {
+		rp.freeTimes = 0
+	}
+
+	return time.Second
+}
+
 // 启动一个消息消费者
-func NewSubMsgConsumer(idx uint64) *subMsgConsumer {
+func NewSubMsgConsumer(idx int) *subMsgConsumer {
 	ctx, Cancel := context.WithCancel(context.Background())
 	return &subMsgConsumer{
 		Ctx:    ctx,
@@ -120,17 +130,15 @@ func (smc *subMsgConsumer) Stop() {
 }
 
 func (rp *RedisProxy) AddConsumer() (err error) {
-	rp.Lock.Lock()
-	defer rp.Lock.Unlock()
 
-	if len(rp.ConsumerGm) >= subMsgConsumerMax {
+	conNum := len(rp.ConsumerGm)
+	if conNum >= subMsgConsumerMax {
 		err = fmt.Errorf("subMsgConsumerMax is full ")
 		return
 	}
-
-	rp.Idx++
-	rp.ConsumerGm[rp.Idx] = NewSubMsgConsumer(rp.Idx)
-	go rp.StartSub(rp.ConsumerGm[rp.Idx])
+	smc := NewSubMsgConsumer(conNum)
+	rp.ConsumerGm[smc] = true
+	go rp.StartSub(smc)
 
 	return
 }
@@ -142,12 +150,12 @@ func (rp *RedisProxy) StartSub(smc *subMsgConsumer) (err error) {
 			logger.L.Error("redisProxy.subMsgConsumer.Sub 消费者异常退出 ", zap.Any("error", err))
 		}
 		rp.Lock.Lock()
-		delete(rp.ConsumerGm, smc.Idx)
+		delete(rp.ConsumerGm, smc)
+		logger.L.Info("redisProxy.subMsgConsumer.StartSub  stop ", zap.Int("idx", smc.Idx), zap.Int("num", len(rp.ConsumerGm)))
 		rp.Lock.Unlock()
 	}()
 
-	defer logger.L.Info("redisProxy.subMsgConsumer.StartSub  stop ", zap.Uint64("idx", smc.Idx), zap.Int("ch_len", len(rp.MsgCh)))
-	logger.L.Info("redisProxy.subMsgConsumer.StartSub start ", zap.Uint64("idx", smc.Idx), zap.Int("ch_len", len(rp.MsgCh)))
+	logger.L.Info("redisProxy.subMsgConsumer.StartSub start ", zap.Int("idx", smc.Idx), zap.Int("ch_len", len(rp.MsgCh)))
 
 	for {
 		select {

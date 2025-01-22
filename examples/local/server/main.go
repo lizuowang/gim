@@ -42,8 +42,8 @@ func main() {
 		Addr:         "192.168.1.191:1079",
 		Password:     "123456",
 		DB:           0,
-		PoolSize:     10,
-		MinIdleConns: 10,
+		PoolSize:     256,
+		MinIdleConns: 32,
 	}
 	redis_client.CreateClient(redisConf)
 	redisClient := redis_client.GetClient()
