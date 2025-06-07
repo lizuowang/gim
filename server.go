@@ -1,13 +1,14 @@
 package gim
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/cloudwego/kitex/pkg/klog"
 	"github.com/lizuowang/gim/pkg/etcd_client"
-	"github.com/lizuowang/gim/pkg/etcd_registry"
 	"github.com/lizuowang/gim/pkg/logger"
 	rpcClient "github.com/lizuowang/gim/service/api/client"
 	rpcServer "github.com/lizuowang/gim/service/api/server"
@@ -18,16 +19,18 @@ import (
 
 var (
 	IsInitLogger bool
-	etcdRegistry *etcd_registry.ServiceRegister
 	runMode      ws.RunMode
 	rpcFile      *os.File
+	serCtx       context.Context
+	serCancel    context.CancelFunc
 )
 
-func InitServer(config *ws.WsConfig) {
+func InitServer(config *ws.WsConfig) error {
 	if !IsInitLogger {
 		panic("请先初始化日志")
 	}
-	ws.InitWs(config)
+	serCtx, serCancel = context.WithCancel(context.Background())
+	ws.InitWs(config, serCtx)
 
 	runMode = config.RunMode
 	if config.RunMode == ws.RunModeRedis {
@@ -51,7 +54,9 @@ func InitServer(config *ws.WsConfig) {
 		RedisClient: config.RedisClient,
 		KeyPrefix:   config.RedisPrefix,
 	}
-	msg_queue.InitStartList(mqConfig)
+	msg_queue.InitStartList(mqConfig, serCtx)
+
+	return nil
 }
 
 // 初始化日志
@@ -88,6 +93,7 @@ func InitKLog(config *logger.LogConfig) {
 // CloseServer 关闭服务
 func CloseServer() {
 	log.Println("关闭gim服务")
+	serCancel()
 	ws.CloseServer()
 	if runMode == ws.RunModeRedis {
 		rpcServer.OnShutdown()
@@ -100,4 +106,7 @@ func CloseServer() {
 	logger.OnClose()
 
 	rpcFile.Close()
+
+	//休眠2秒等待服务全部关闭
+	time.Sleep(2 * time.Second)
 }

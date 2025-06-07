@@ -92,3 +92,35 @@ func (lp *LocalProxy) StopLocalUserClient(uid string) {
 func (lp *LocalProxy) StopUserClient(userOnline *UserOnline) {
 	lp.StopLocalUserClient(userOnline.UserId)
 }
+
+// 通过客户端加入临时组
+func (lp *LocalProxy) JoinLockGroup(uid string, tgid string) (ok bool) {
+	client, clientOk := ClientM.GetClient(uid)
+	if !clientOk {
+		return false
+	}
+
+	client.InTGroup(tgid)
+	return true
+}
+
+// 通过客户端加入临时组
+func (lp *LocalProxy) JoinGroup(uid string, tgid string) (ok bool) {
+	return lp.JoinLockGroup(uid, tgid)
+}
+
+// 通过客户端退出临时组
+func (lp *LocalProxy) OutLockGroup(uid string, gid string) (ok bool) {
+	client, clientOk := ClientM.GetClient(uid)
+	if !clientOk {
+		return false
+	}
+
+	client.OutTGroup(gid)
+	return true
+}
+
+// 通过客户端退出临时组
+func (lp *LocalProxy) OutGroup(uid string, gid string) (ok bool) {
+	return lp.OutLockGroup(uid, gid)
+}

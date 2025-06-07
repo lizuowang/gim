@@ -16,6 +16,8 @@ type Client interface {
 	SendMsgToUserByTgid(ctx context.Context, req *rpc.SendMsgByTgidReq, callOptions ...callopt.Option) (r *rpc.SendMsgRsp, err error)
 	StopUserClient(ctx context.Context, req *rpc.UserIdReq, callOptions ...callopt.Option) (r *rpc.StopUserClientRsp, err error)
 	GetSysInfo(ctx context.Context, callOptions ...callopt.Option) (r *rpc.BytesRsp, err error)
+	JoinGroup(ctx context.Context, req *rpc.JoinGroupReq, callOptions ...callopt.Option) (r *rpc.JoinGroupRes, err error)
+	OutGroup(ctx context.Context, req *rpc.JoinGroupReq, callOptions ...callopt.Option) (r *rpc.JoinGroupRes, err error)
 }
 
 // NewClient creates a client for the service defined in IDL.
@@ -70,4 +72,14 @@ func (p *kImRpcClient) StopUserClient(ctx context.Context, req *rpc.UserIdReq, c
 func (p *kImRpcClient) GetSysInfo(ctx context.Context, callOptions ...callopt.Option) (r *rpc.BytesRsp, err error) {
 	ctx = client.NewCtxWithCallOptions(ctx, callOptions)
 	return p.kClient.GetSysInfo(ctx)
+}
+
+func (p *kImRpcClient) JoinGroup(ctx context.Context, req *rpc.JoinGroupReq, callOptions ...callopt.Option) (r *rpc.JoinGroupRes, err error) {
+	ctx = client.NewCtxWithCallOptions(ctx, callOptions)
+	return p.kClient.JoinGroup(ctx, req)
+}
+
+func (p *kImRpcClient) OutGroup(ctx context.Context, req *rpc.JoinGroupReq, callOptions ...callopt.Option) (r *rpc.JoinGroupRes, err error) {
+	ctx = client.NewCtxWithCallOptions(ctx, callOptions)
+	return p.kClient.OutGroup(ctx, req)
 }

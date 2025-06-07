@@ -60,6 +60,20 @@ func (s *ImRpcImpl) StopUserClient(ctx context.Context, req *rpc.UserIdReq) (res
 	return resp, err
 }
 
+// 加入临时组
+func (s *ImRpcImpl) JoinGroup(ctx context.Context, req *rpc.JoinGroupReq) (resp *rpc.JoinGroupRes, err error) {
+	ok := ws.Proxy.JoinLockGroup(req.Uid, req.Tgid)
+	resp = &rpc.JoinGroupRes{Res: ok}
+	return resp, err
+}
+
+// 退出临时组
+func (s *ImRpcImpl) OutGroup(ctx context.Context, req *rpc.JoinGroupReq) (resp *rpc.JoinGroupRes, err error) {
+	ok := ws.Proxy.OutLockGroup(req.Uid, req.Tgid)
+	resp = &rpc.JoinGroupRes{Res: ok}
+	return resp, err
+}
+
 // 获取服务系统信息
 func (s *ImRpcImpl) GetSysInfo(ctx context.Context) (resp *rpc.BytesRsp, err error) {
 	//获取信息

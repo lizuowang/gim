@@ -48,6 +48,20 @@ var serviceMethods = map[string]kitex.MethodInfo{
 		false,
 		kitex.WithStreamingMode(kitex.StreamingNone),
 	),
+	"JoinGroup": kitex.NewMethodInfo(
+		joinGroupHandler,
+		newImRpcJoinGroupArgs,
+		newImRpcJoinGroupResult,
+		false,
+		kitex.WithStreamingMode(kitex.StreamingNone),
+	),
+	"OutGroup": kitex.NewMethodInfo(
+		outGroupHandler,
+		newImRpcOutGroupArgs,
+		newImRpcOutGroupResult,
+		false,
+		kitex.WithStreamingMode(kitex.StreamingNone),
+	),
 }
 
 var (
@@ -204,6 +218,42 @@ func newImRpcGetSysInfoResult() interface{} {
 	return rpc.NewImRpcGetSysInfoResult()
 }
 
+func joinGroupHandler(ctx context.Context, handler interface{}, arg, result interface{}) error {
+	realArg := arg.(*rpc.ImRpcJoinGroupArgs)
+	realResult := result.(*rpc.ImRpcJoinGroupResult)
+	success, err := handler.(rpc.ImRpc).JoinGroup(ctx, realArg.Req)
+	if err != nil {
+		return err
+	}
+	realResult.Success = success
+	return nil
+}
+func newImRpcJoinGroupArgs() interface{} {
+	return rpc.NewImRpcJoinGroupArgs()
+}
+
+func newImRpcJoinGroupResult() interface{} {
+	return rpc.NewImRpcJoinGroupResult()
+}
+
+func outGroupHandler(ctx context.Context, handler interface{}, arg, result interface{}) error {
+	realArg := arg.(*rpc.ImRpcOutGroupArgs)
+	realResult := result.(*rpc.ImRpcOutGroupResult)
+	success, err := handler.(rpc.ImRpc).OutGroup(ctx, realArg.Req)
+	if err != nil {
+		return err
+	}
+	realResult.Success = success
+	return nil
+}
+func newImRpcOutGroupArgs() interface{} {
+	return rpc.NewImRpcOutGroupArgs()
+}
+
+func newImRpcOutGroupResult() interface{} {
+	return rpc.NewImRpcOutGroupResult()
+}
+
 type kClient struct {
 	c client.Client
 }
@@ -258,6 +308,26 @@ func (p *kClient) GetSysInfo(ctx context.Context) (r *rpc.BytesRsp, err error) {
 	var _args rpc.ImRpcGetSysInfoArgs
 	var _result rpc.ImRpcGetSysInfoResult
 	if err = p.c.Call(ctx, "GetSysInfo", &_args, &_result); err != nil {
+		return
+	}
+	return _result.GetSuccess(), nil
+}
+
+func (p *kClient) JoinGroup(ctx context.Context, req *rpc.JoinGroupReq) (r *rpc.JoinGroupRes, err error) {
+	var _args rpc.ImRpcJoinGroupArgs
+	_args.Req = req
+	var _result rpc.ImRpcJoinGroupResult
+	if err = p.c.Call(ctx, "JoinGroup", &_args, &_result); err != nil {
+		return
+	}
+	return _result.GetSuccess(), nil
+}
+
+func (p *kClient) OutGroup(ctx context.Context, req *rpc.JoinGroupReq) (r *rpc.JoinGroupRes, err error) {
+	var _args rpc.ImRpcOutGroupArgs
+	_args.Req = req
+	var _result rpc.ImRpcOutGroupResult
+	if err = p.c.Call(ctx, "OutGroup", &_args, &_result); err != nil {
 		return
 	}
 	return _result.GetSuccess(), nil

@@ -207,3 +207,47 @@ func GetSysInfo(client *Client) (sysInfo *types.SysInfo, err error) {
 
 	return
 }
+
+// 加入临时组
+func JoinGroup(server *types.Server, uid string, tgid string) (res bool, err error) {
+	client, err := GetClientByAddr(server.String())
+	if err != nil {
+		return
+	}
+	sendReq := &rpc.JoinGroupReq{
+		Uid:  uid,
+		Tgid: tgid,
+	}
+
+	rsp, err := client.Cli.JoinGroup(context.Background(), sendReq)
+	if err != nil {
+		logger.L.Error("rpcClient.JoinGroup 加入临时组失败", zap.String("addr", server.String()), zap.Any("error", err))
+		return
+	}
+
+	res = rsp.GetRes()
+	return
+}
+
+// 退出临时组
+func OutGroup(server *types.Server, uid string, tgid string) (res bool, err error) {
+	client, err := GetClientByAddr(server.String())
+	if err != nil {
+		return
+	}
+
+	sendReq := &rpc.JoinGroupReq{
+		Uid:  uid,
+		Tgid: tgid,
+	}
+
+	rsp, err := client.Cli.OutGroup(context.Background(), sendReq)
+	if err != nil {
+		logger.L.Error("rpcClient.OutGroup 退出临时组失败", zap.String("addr", server.String()), zap.Any("error", err))
+		return
+	}
+
+	res = rsp.GetRes()
+
+	return
+}

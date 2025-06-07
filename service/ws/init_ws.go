@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -45,7 +46,7 @@ var (
 	ServerName string
 )
 
-func InitWs(c *WsConfig) {
+func InitWs(c *WsConfig, ctx context.Context) {
 
 	if c.Option == nil {
 		panic("ws option is nil")
@@ -74,7 +75,7 @@ func InitWs(c *WsConfig) {
 	ServerName = fmt.Sprintf("%s:%s", helper.GetLastSegmentOfIP(serverIp), Config.WsPort)
 
 	//初始化代理
-	InitProxy()
+	InitProxy(ctx)
 }
 
 // GetServerIp 获取服务ip
@@ -84,7 +85,5 @@ func GetServerIp() string {
 
 // CloseServer 关闭服务
 func CloseServer() {
-	if subCtx != nil {
-		subCtx.Done()
-	}
+
 }

@@ -31,10 +31,7 @@ func NewServiceDiscovery(cli *clientv3.Client, name string, onRegister func(kv *
 // WatchService 初始化服务列表和监视
 func (s *ServiceDiscovery) WatchService() error {
 
-	//监视前缀，修改变更的server
-	go s.watcher()
-
-	//根据前缀获取现有的key
+	//根据前缀获取现有的key，同时获取当前revision
 	resp, err := s.cli.Get(context.Background(), s.name, clientv3.WithPrefix())
 	if err != nil {
 		return err
@@ -44,6 +41,9 @@ func (s *ServiceDiscovery) WatchService() error {
 		s.onRegister(ev)
 	}
 
+	//从获取服务时的revision+1开始监视，确保不漏掉任何变更
+	go s.watcherFromRevision(resp.Header.Revision + 1)
+
 	return nil
 }
 
@@ -51,6 +51,23 @@ func (s *ServiceDiscovery) WatchService() error {
 func (s *ServiceDiscovery) watcher() {
 	rch := s.cli.Watch(context.Background(), s.name, clientv3.WithPrefix())
 	logger.L.Info("ServiceDiscovery.watcher", zap.String("prefix", s.name))
+	for wresp := range rch {
+		for _, ev := range wresp.Events {
+			switch ev.Type {
+			case mvccpb.PUT: //修改或者新增
+				s.onRegister(ev.Kv)
+			case mvccpb.DELETE: //删除
+				s.onUnregister(ev.Kv)
+			}
+		}
+	}
+	log.Println("关闭服务发现", s.name)
+}
+
+// watcherFromRevision 监听前缀，从指定revision开始
+func (s *ServiceDiscovery) watcherFromRevision(revision int64) {
+	rch := s.cli.Watch(context.Background(), s.name, clientv3.WithPrefix(), clientv3.WithRev(revision))
+	logger.L.Info("ServiceDiscovery.watcherFromRevision", zap.String("prefix", s.name), zap.Int64("revision", revision))
 	for wresp := range rch {
 		for _, ev := range wresp.Events {
 			switch ev.Type {

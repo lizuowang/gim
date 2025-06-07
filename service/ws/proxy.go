@@ -1,6 +1,8 @@
 package ws
 
 import (
+	"context"
+
 	"github.com/lizuowang/gim/pkg/types"
 )
 
@@ -22,18 +24,24 @@ type RunProxy interface {
 
 	StopLocalUserClient(uid string)        //停止本地用户client
 	StopUserClient(userOnline *UserOnline) //停止用户client
+
+	JoinLockGroup(uid string, tgid string) (ok bool) // 通过客户端加入临时组
+	JoinGroup(uid string, tgid string) (ok bool)     // 通过客户端加入临时组
+	OutLockGroup(uid string, tgid string) (ok bool)  // 通过客户端退出临时组
+	OutGroup(uid string, tgid string) (ok bool)      // 通过客户端退出临时组
+
 }
 
 var (
 	Proxy RunProxy
 )
 
-func InitProxy() {
+func InitProxy(ctx context.Context) {
 
 	if Config.RunMode == RunModeLocal {
 		Proxy = NewLocalProxy()
 	} else {
-		Proxy = NewRedisProxy(Config.RedisClient)
+		Proxy = NewRedisProxy(Config.RedisClient, ctx)
 	}
 
 }

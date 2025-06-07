@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -184,8 +183,9 @@ func (h *Handler) OnOpen(socket *gws.Conn) {
 
 func handleRequestMsg(client *ws.Client, request *types.Request) (aData *types.AData, err error) {
 
-	err = errors.New("错误test")
 	aData = types.HandleAData("tttt", "mol", "ctrl")
+
+	ws.Proxy.OutGroup("101000002", "ccc")
 	ws.Proxy.SendResDataToUserByTgid("123", "ccc", types.NewResponseData(aData))
 	ws.Proxy.SendResDataToUser("123", types.NewResponseData(aData))
 	ws.Proxy.SendResDataToGroup("ccc", types.NewResponseData(aData), "")

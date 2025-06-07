@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -28,6 +29,8 @@ var (
 	mqConfig      *MqConfig //配置
 	freeCNum      int32     //空闲协程数量
 	freeTimes     int       //空闲次数
+	qCtx          context.Context
+	reNum         int
 )
 
 // 增加空闲协程数量
@@ -146,12 +149,13 @@ type MqConfig struct {
 }
 
 // 初始化并启动消息队列
-func InitStartList(config *MqConfig) {
+func InitStartList(config *MqConfig, ctx context.Context) {
 	mqConfig = config
 	list_key = mqConfig.KeyPrefix + list_key
 
 	mqConfig.RedisClient.Del(context.Background(), list_key)
 
+	qCtx = ctx
 	go startList()
 }
 
@@ -160,15 +164,30 @@ func startList() {
 
 	defer func() { //异常退出是 重新启动
 		if r := recover(); r != nil {
-			logger.L.Error("msg.startList stop error ", zap.Any("error", r))
+			logger.L.Error("wsMsgQueue.startList stop error ", zap.Any("error", r))
+			reNum++
+			if reNum > 10 {
+				panic(fmt.Errorf("wsMsgQueue.startList stop error "))
+			}
 			// 重新启动startList或者其他恢复操作
+			time.Sleep(time.Second * 1)
 			go startList()
 		}
 	}()
 
 	for {
-		sleepTime := manageConsumer()
-		time.Sleep(sleepTime) // 每1秒检查一次
+		select {
+		case <-qCtx.Done():
+			logger.L.Info("wsMsgQueue.startList 关闭")
+			log.Println("wsMsgQueue.startList close ")
+			return
+		default:
+			sleepTime := manageConsumer()
+			time.Sleep(sleepTime) // 每1秒检查一次
+
+			// 重置重试次数
+			reNum = 0
+		}
 	}
 
 }

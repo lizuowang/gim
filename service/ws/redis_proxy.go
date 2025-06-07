@@ -24,7 +24,6 @@ const (
 var (
 	subMsgConsumerMax = 20
 	subMsgConsumerMin = 1
-	subCtx            context.Context
 	redisProxy        *RedisProxy
 )
 
@@ -35,6 +34,7 @@ type RedisProxy struct {
 	MsgCh       <-chan *redis.Message
 	Lock        sync.RWMutex
 	freeTimes   int // 空闲次数
+	Ctx         context.Context
 }
 
 type subMsgConsumer struct {
@@ -44,11 +44,13 @@ type subMsgConsumer struct {
 }
 
 // 实例化
-func NewRedisProxy(redisClient *redis.Client) *RedisProxy {
+func NewRedisProxy(redisClient *redis.Client, ctx context.Context) *RedisProxy {
 	redisProxy = &RedisProxy{
 		RedisClient: redisClient,
 		ConsumerGm:  make(map[*subMsgConsumer]bool),
+		Ctx:         ctx,
 	}
+
 	go redisProxy.SubV2()
 	return redisProxy
 }
@@ -57,17 +59,17 @@ func NewRedisProxy(redisClient *redis.Client) *RedisProxy {
 func (rp *RedisProxy) SubV2() {
 	// 订阅key
 	subKey := rp.GetSubKey()
-	subCtx = context.Background()
-	pubsub := rp.RedisClient.Subscribe(subCtx, subKey)
-	pubsub.ReceiveTimeout(subCtx, 0)
+
+	pubsub := rp.RedisClient.Subscribe(rp.Ctx, subKey)
+	pubsub.ReceiveTimeout(rp.Ctx, 0)
 
 	rp.MsgCh = pubsub.Channel()
 
 	defer func() {
-
-		logger.L.Error("redisProxy.Sub 异常退出 ")
-		panic(fmt.Errorf("redsi proxy sub error "))
-
+		if err := recover(); err != nil {
+			logger.L.Error("redisProxy.Sub 异常退出 ", zap.Any("error", err))
+			panic(fmt.Errorf("redsi proxy sub error "))
+		}
 	}()
 	defer pubsub.Close()
 
@@ -77,8 +79,15 @@ func (rp *RedisProxy) SubV2() {
 
 	// 管理消费
 	for {
-		sTime := rp.consumerManage()
-		time.Sleep(sTime)
+		select {
+		case <-rp.Ctx.Done(): //  监听统一的关闭信号
+			logger.L.Info("redisProxy.Sub 关闭")
+			log.Println("redis proxy sub close ")
+			return
+		default:
+			sTime := rp.consumerManage()
+			time.Sleep(sTime)
+		}
 	}
 
 }
@@ -160,6 +169,8 @@ func (rp *RedisProxy) StartSub(smc *subMsgConsumer) (err error) {
 	for {
 		select {
 		case <-smc.Ctx.Done(): //监听是否退出
+			return
+		case <-rp.Ctx.Done(): //监听是否退出
 			return
 		case msg, ok := <-rp.MsgCh: //监听消息
 			if !ok {
@@ -350,4 +361,35 @@ func (rp *RedisProxy) StopUserClient(userOnline *UserOnline) {
 	// 远程stop
 	server := types.NewServer(userOnline.AccIp, userOnline.RpcPort)
 	rpcClient.StopUserClient(server, userOnline.UserId)
+}
+
+/** 临时组 */
+// 通过客户端加入临时组
+func (rp *RedisProxy) JoinGroup(uid string, tgid string) (ok bool) {
+	if ClientM.HasUser(uid) {
+		return rp.JoinLockGroup(uid, tgid)
+	}
+
+	server, err := GetUserRpcServer(uid)
+	if err != nil {
+		return
+	}
+	ok, _ = rpcClient.JoinGroup(server, uid, tgid)
+
+	return
+}
+
+// 通过客户端退出临时组
+func (rp *RedisProxy) OutGroup(uid string, tgid string) (ok bool) {
+	if ClientM.HasUser(uid) {
+		return rp.OutLockGroup(uid, tgid)
+	}
+
+	server, err := GetUserRpcServer(uid)
+	if err != nil {
+		return
+	}
+	ok, _ = rpcClient.OutGroup(server, uid, tgid)
+
+	return
 }

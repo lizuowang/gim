@@ -95,9 +95,7 @@ func (manager *ClientManager) GetClientByConn(conn *gws.Conn) (client *Client, o
 
 // 停止用户
 func (manager *ClientManager) StopClient(uid string) {
-	manager.ClientsLock.RLock()
-	defer manager.ClientsLock.RUnlock()
-	client, ok := manager.Clients[uid]
+	client, ok := manager.GetClient(uid)
 	if ok {
 		client.Close()
 	}
@@ -154,20 +152,14 @@ func (manager *ClientManager) SendMsgToUserByTgid(uid string, tgid string, msg [
 
 // 用户是否存在
 func (manager *ClientManager) HasUser(uid string) bool {
-	rs := false
-	manager.ClientsLock.RLock()
-	defer manager.ClientsLock.RUnlock()
-	_, ok := manager.Clients[uid]
-	if ok {
-		rs = true
-	}
-	return rs
+	_, ok := manager.GetClient(uid)
+	return ok
 }
 
 func (manager *ClientManager) GetClientsLen() (clientsLen int) {
-
+	manager.ClientsLock.RLock()
+	defer manager.ClientsLock.RUnlock()
 	clientsLen = len(manager.Clients)
-
 	return
 }
 
