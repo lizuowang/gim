@@ -118,8 +118,7 @@ func (manager *ClientManager) SendResponseToUserByTgid(uid string, tgid string, 
 		return im_err.NewImError(im_err.ErrUserOffline)
 	}
 
-	_, tok := client.TGroup[tgid]
-	if !tok {
+	if !client.IsInTGroup(tgid) {
 		return nil
 	}
 
@@ -142,8 +141,7 @@ func (manager *ClientManager) SendMsgToUserByTgid(uid string, tgid string, msg [
 	if !ok {
 		return im_err.NewImError(im_err.ErrUserOffline)
 	}
-	_, tok := client.TGroup[tgid]
-	if !tok {
+	if !client.IsInTGroup(tgid) {
 		return nil
 	}
 

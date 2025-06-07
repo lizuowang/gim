@@ -70,6 +70,14 @@ func (c *Client) InitStart() {
 }
 
 /**    临时组       */
+// 是否在临时组
+func (c *Client) IsInTGroup(group_id string) bool {
+	c.TGroupLock.RLock()
+	defer c.TGroupLock.RUnlock()
+	_, ok := c.TGroup[group_id]
+	return ok
+}
+
 // 进入临时组
 func (c *Client) InTGroup(group_id string) {
 
