@@ -12,7 +12,6 @@ import (
 	"github.com/lizuowang/gim/pkg/logger"
 	rpcClient "github.com/lizuowang/gim/service/api/client"
 	rpcServer "github.com/lizuowang/gim/service/api/server"
-	"github.com/lizuowang/gim/service/msg_queue"
 	"github.com/lizuowang/gim/service/ws"
 	"go.uber.org/zap"
 )
@@ -50,11 +49,11 @@ func InitServer(config *ws.WsConfig) error {
 
 	}
 
-	mqConfig := &msg_queue.MqConfig{
-		RedisClient: config.RedisClient,
-		KeyPrefix:   config.RedisPrefix,
-	}
-	msg_queue.InitStartList(mqConfig, serCtx)
+	// mqConfig := &msg_queue.MqConfig{
+	// 	RedisClient: config.RedisClient,
+	// 	KeyPrefix:   config.RedisPrefix,
+	// }
+	// msg_queue.InitStartList(mqConfig, serCtx)
 
 	return nil
 }

@@ -18,6 +18,7 @@ const (
 	ErrParams            = 20002 // 参数错误
 	ErrJson              = 20003 // json解析错误
 	ErrNoHandleMsg       = 20004 // 未设置处理消息函数
+	ErrSendChanFull      = 20005 // 发送通道已满
 )
 
 // 错误码对应信息
@@ -28,6 +29,7 @@ var CodeMsg = map[int]string{
 	ErrParams:            "PARAMS_ERROR",
 	ErrJson:              "JSON_ERROR",
 	ErrNoHandleMsg:       "NO_HANDLE_MSG",
+	ErrSendChanFull:      "SEND_CHAN_FULL",
 }
 
 // 创建错误

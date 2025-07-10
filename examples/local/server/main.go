@@ -56,6 +56,8 @@ func main() {
 			ClientContextTakeover: true,
 		},
 
+		WriteBufferSize: 4096 * 100, // 增加写入缓冲区大小
+
 		Authorize: func(r *http.Request, session gws.SessionStorage) bool {
 			//全局自增一个 uid
 			// uid := redisClient.Incr(context.Background(), "test:uid").Val()
@@ -82,14 +84,16 @@ func main() {
 	handler := &Handler{}
 	handler.HandleRequestMsg = handleRequestMsg
 	wsConf := &ws.WsConfig{
-		RunMode:     ws.RunModeRedis,
-		RedisPrefix: "test",
-		WsPort:      "8080",
-		RpcPort:     "8091",
-		Handler:     handler,
-		RedisClient: redisClient,
-		Option:      gwsOption,
-		EtcdClient:  etcd,
+		RunMode:          ws.RunModeRedis,
+		RedisPrefix:      "test",
+		WsPort:           "8080",
+		RpcPort:          "8091",
+		KeepTime:         3000, // 设置连接保活时间为300秒，避免压测时连接超时
+		ClientMsgChanMax: 1000,
+		Handler:          handler,
+		RedisClient:      redisClient,
+		Option:           gwsOption,
+		EtcdClient:       etcd,
 	}
 	gim.InitServer(wsConf)
 
@@ -185,7 +189,7 @@ func handleRequestMsg(client *ws.Client, request *types.Request) (aData *types.A
 
 	aData = types.HandleAData("tttt", "mol", "ctrl")
 
-	ws.Proxy.OutGroup("101000002", "ccc")
+	// ws.Proxy.OutGroup("101000002", "ccc")
 	ws.Proxy.SendResDataToUserByTgid("123", "ccc", types.NewResponseData(aData))
 	ws.Proxy.SendResDataToUser("123", types.NewResponseData(aData))
 	ws.Proxy.SendResDataToGroup("ccc", types.NewResponseData(aData), "")

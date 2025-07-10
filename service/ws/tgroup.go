@@ -25,7 +25,7 @@ func NewTGroup(gid string) (tGroup *TGroup) {
 		State: 1,
 		Gid:   gid,
 		Users: make(map[string]bool),
-		Send:  make(chan *types.GroupMsg, 100),
+		Send:  make(chan *types.GroupMsg, Config.GroupMsgChanMax),
 	}
 	go tGroup.ListenSendChan()
 	return

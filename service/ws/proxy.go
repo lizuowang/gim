@@ -33,7 +33,8 @@ type RunProxy interface {
 }
 
 var (
-	Proxy RunProxy
+	Proxy    RunProxy
+	ProxyMsg *ProxyMsgQueue
 )
 
 func InitProxy(ctx context.Context) {
@@ -41,8 +42,10 @@ func InitProxy(ctx context.Context) {
 	if Config.RunMode == RunModeLocal {
 		Proxy = NewLocalProxy()
 	} else {
-		Proxy = NewRedisProxy(Config.RedisClient, ctx)
+		Proxy = NewRedisProxy()
 	}
+
+	ProxyMsg = NewProxyMsgQueue(ctx)
 
 }
 
@@ -50,15 +53,26 @@ func GetSubMsgList() *types.WsMsgList {
 	msgList := &types.WsMsgList{
 		MsgNum:     0,
 		ConsumeNum: 0,
+		FreeCNum:   0,
 	}
-	if redisProxy == nil {
+	if ProxyMsg == nil {
 		return msgList
 	}
 
-	msgList.MsgNum = int64(len(redisProxy.MsgCh))
-	redisProxy.Lock.RLock()
-	msgList.ConsumeNum = len(redisProxy.ConsumerGm)
-	redisProxy.Lock.RUnlock()
+	// msgList.MsgNum = int64(len(redisProxy.MsgCh))
+	// redisProxy.Lock.RLock()
+	// msgList.ConsumeNum = len(redisProxy.ConsumerGm)
+	// redisProxy.Lock.RUnlock()
+
+	msgList.MsgNum = int64(ProxyMsg.WorkerM.GetChanMsgLen())
+	msgList.ConsumeNum = int(ProxyMsg.WorkerM.GetTotalCNum())
+	msgList.FreeCNum = ProxyMsg.WorkerM.GetFreeCNum()
 
 	return msgList
+}
+
+func stopProxyWM() {
+	if ProxyMsg != nil {
+		ProxyMsg.StopWorkerM()
+	}
 }

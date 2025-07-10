@@ -1,10 +1,11 @@
 module github.com/lizuowang/gim
 
-go 1.22.5
+go 1.23.4
 
 require (
 	github.com/cloudwego/gopkg v0.1.2
 	github.com/cloudwego/kitex v0.11.3
+	github.com/lizuowang/gmq v1.0.5
 	github.com/lxzan/gws v1.8.8
 	github.com/oklog/ulid/v2 v2.1.0
 	github.com/redis/go-redis/v9 v9.7.0

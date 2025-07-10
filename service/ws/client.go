@@ -53,7 +53,7 @@ func NewClient(socket *gws.Conn, uid string, randUuid string, msgCode gws.Opcode
 		HeartbeatTime: cTIme,
 		TGroup:        make(map[string]bool),
 		MsgCode:       msgCode,
-		sendChan:      make(chan []byte, 100),
+		sendChan:      make(chan []byte, Config.ClientMsgChanMax), // 增加队列容量以应对高并发
 	}
 
 	return
@@ -182,7 +182,13 @@ func (c *Client) SafeSendMsg(msg []byte, sendType int8) error {
 	if sendType == 1 { // 同步发送
 		c.Socket.WriteMessage(c.MsgCode, msg)
 	} else {
-		c.sendChan <- msg
+		select {
+		case c.sendChan <- msg:
+		default:
+			logger.L.Error("Client.SafeSendMsg chan is full", zap.String("uid", c.UserId))
+			c.Close()
+			return im_err.NewImError(im_err.ErrSendChanFull)
+		}
 	}
 	return nil
 }
@@ -192,7 +198,14 @@ func (c *Client) SendMsgLoop() {
 
 	defer c.Close()
 	for msg := range c.sendChan {
-		c.Socket.WriteMessage(c.MsgCode, msg)
+		// 增加错误处理，避免单个消息发送失败影响整个连接
+		err := c.Socket.WriteMessage(c.MsgCode, msg)
+		if err != nil {
+			logger.L.Error("Client.SendMsgLoop write message error",
+				zap.String("uid", c.UserId),
+				zap.Error(err))
+			break
+		}
 	}
 }
 
@@ -200,6 +213,12 @@ func (c *Client) SendMsgLoop() {
 
 // close 关闭客户端连接
 func (c *Client) Close() {
+	defer func() {
+		if err := recover(); err != nil {
+			logger.L.Error("Client.Close error", zap.Any("error", err), zap.String("debug_stack", string(debug.Stack())))
+		}
+	}()
+
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	if c.State == StateOffline {
@@ -237,6 +256,9 @@ func (c *Client) Heartbeat() {
 
 	ResetUserOnlineExpTime(c.UserId)
 	c.SetConnDeadLine()
+
+	// 更新心跳时间
+	c.HeartbeatTime = uint64(time.Now().Unix())
 }
 
 // 延长连接事件

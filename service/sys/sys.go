@@ -8,7 +8,6 @@ import (
 
 	"github.com/lizuowang/gim/pkg/types"
 	rpcClient "github.com/lizuowang/gim/service/api/client"
-	"github.com/lizuowang/gim/service/msg_queue"
 	"github.com/lizuowang/gim/service/ws"
 )
 
@@ -19,11 +18,6 @@ func GetSysInfo() (managerInfo *types.SysInfo) {
 	managerInfo.NumCPU = runtime.NumCPU()
 	managerInfo.ManagerInfo = ws.GetManagerInfo()
 	managerInfo.Version = ws.Config.Version
-	managerInfo.MsgList = &types.WsMsgList{
-		ConsumeNum: msg_queue.GetConsumeLen(),
-		MsgNum:     msg_queue.GetMsgListLen(),
-		FreeCNum:   msg_queue.GetFreeCNum(),
-	}
 
 	// 获取 CPU 使用率
 	cpuPercent, err := cpu.Percent(0, false)
@@ -66,19 +60,11 @@ func GetSysCollectInfo() (sysCollectInfo *types.SycCollectInfo) {
 	}
 
 	sysCollectInfo.NodeList = allSysInfo
-	sysCollectInfo.MsgList.MsgNum = 0
 	for _, sysInfo := range allSysInfo {
 		sysCollectInfo.NodeNum++
 		sysCollectInfo.Version = sysInfo.Version
 		sysCollectInfo.NumCPU += sysInfo.NumCPU
 		sysCollectInfo.NumGoroutine += sysInfo.NumGoroutine
-
-		// 队列消息数
-		sysCollectInfo.MsgList.ConsumeNum += sysInfo.MsgList.ConsumeNum
-		// 消息总数 取最大值
-		if sysInfo.MsgList.MsgNum > sysCollectInfo.MsgList.MsgNum {
-			sysCollectInfo.MsgList.MsgNum = sysInfo.MsgList.MsgNum
-		}
 
 		// 客户端数
 		sysCollectInfo.ManagerInfo.ClientsLen += sysInfo.ManagerInfo.ClientsLen

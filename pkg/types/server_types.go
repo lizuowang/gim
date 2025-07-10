@@ -31,7 +31,7 @@ type WsManagerInfo struct {
 type WsMsgList struct {
 	MsgNum     int64 `json:"msgNum"`     //堆积消息数量
 	ConsumeNum int   `json:"consumeNum"` //消费者数量
-	FreeCNum   int32 `json:"freeCNum"`   //空闲写成书数量
+	FreeCNum   int32 `json:"freeCNum"`   //空闲协程数量
 }
 
 // 系统信息
@@ -41,16 +41,15 @@ type SysInfo struct {
 	MemPercent   float64        `json:"memPercent"`   //内存使用率
 	NumCPU       int            `json:"numCPU"`       //cpu 数量
 	ManagerInfo  *WsManagerInfo `json:"managerInfo"`
-	MsgList      *WsMsgList     `json:"msgList"`    //队列消息
-	SubMsgList   *WsMsgList     `json:"subMsgList"` //订阅消息
-	Name         string         `json:"name"`
-	Version      string         `json:"version"`
+	// MsgList      *WsMsgList     `json:"msgList"`    //队列消息
+	SubMsgList *WsMsgList `json:"subMsgList"` //订阅消息
+	Name       string     `json:"name"`
+	Version    string     `json:"version"`
 }
 
 func NewSysInfo() *SysInfo {
 	return &SysInfo{
 		ManagerInfo: &WsManagerInfo{},
-		MsgList:     &WsMsgList{},
 	}
 }
 
