@@ -45,16 +45,27 @@ func handleSubMsg(msg string) (newMsg string) {
 	}
 
 	if subMsg.Tgid != "" { //向组内发送
-		if subMsg.ToUid != "" { // 向组内用户发送
-			Proxy.SendResDataToUserByTgid(subMsg.ToUid, subMsg.Tgid, responseData)
-		} else { // 向本地组内发送
-			Proxy.SendResDataToLocalGroup(subMsg.Tgid, responseData, subMsg.ExceptUid)
+		sendResDataToGroup(subMsg.Tgid, responseData, subMsg)
+	} else if len(subMsg.TgidList) > 0 { //向组内发送
+		for _, tgid := range subMsg.TgidList {
+			if tgid != "" {
+				sendResDataToGroup(tgid, responseData, subMsg)
+			}
 		}
 	} else if subMsg.ToUid != "" { //向用户发送
 		Proxy.SendResDataToUser(subMsg.ToUid, responseData)
 	}
 
 	return
+}
+
+// 向组内发送消息
+func sendResDataToGroup(tgid string, responseData *types.ResponseData, subMsg *types.SubMsg) {
+	if subMsg.ToUid != "" { // 向组内用户发送
+		Proxy.SendResDataToUserByTgid(subMsg.ToUid, tgid, responseData)
+	} else { // 向本地组内发送
+		Proxy.SendResDataToLocalGroup(tgid, responseData, subMsg.ExceptUid)
+	}
 }
 
 func NewProxyMsgQueue(ctx context.Context) *ProxyMsgQueue {

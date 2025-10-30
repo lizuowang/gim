@@ -181,6 +181,7 @@ func (h *Handler) OnOpen(socket *gws.Conn) {
 	client, ok := ws.ClientM.GetClientByConn(socket)
 	if ok {
 		client.InTGroup("ccc")
+		client.InTGroup("ccc1")
 		// client.SendResponseData(resData, "101000001", "101000001", types.MSG_TYPE_RESPONSE)
 	}
 }

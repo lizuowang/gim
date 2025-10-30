@@ -47,12 +47,13 @@ func GetResDataGroupMsg(resData *ResponseData, exceptUid string) (groupMsg *Grou
 
 // 订阅消息
 type SubMsg struct {
-	Tgid      string `json:"tgid"`       //tgid
-	Mol       string `json:"mol"`        //mod
-	Ctrl      string `json:"ctrl"`       //ctrl
-	Data      *AData `json:"data"`       // 数据
-	ExceptUid string `json:"except_uid"` //排除一个uid
-	CTime     int64  `json:"c_time"`     //毫秒时间戳
-	MsgType   int8   `json:"msg_type"`   //消息类型 1:消息
-	ToUid     string `json:"to_uid"`     //到组内用户
+	Tgid      string   `json:"tgid"`       //tgid
+	TgidList  []string `json:"tgid_list"`  //tgid列表
+	Mol       string   `json:"mol"`        //mod
+	Ctrl      string   `json:"ctrl"`       //ctrl
+	Data      *AData   `json:"data"`       // 数据
+	ExceptUid string   `json:"except_uid"` //排除一个uid
+	CTime     int64    `json:"c_time"`     //毫秒时间戳
+	MsgType   int8     `json:"msg_type"`   //消息类型 1:消息
+	ToUid     string   `json:"to_uid"`     //到组内用户
 }
