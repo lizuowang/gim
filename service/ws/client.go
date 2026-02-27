@@ -39,6 +39,7 @@ type Client struct {
 	TGroup        map[string]bool // 临时组
 	MsgCode       gws.Opcode      // 消息类型
 	sendChan      chan []byte
+	closeOnce     sync.Once // 关闭once
 }
 
 // 初始化
@@ -229,25 +230,40 @@ func (c *Client) Close() {
 }
 
 // 监听关闭时间
-func (c *Client) OnClose() {
-	c.State = StateOffline
+func (c *Client) OnClose() bool {
+	closeClient := false
+	c.closeOnce.Do(func() {
+		defer func() {
+			if err := recover(); err != nil {
+				logger.L.Error("Client.OnClose error", zap.String("uid", c.UserId), zap.Any("error", err))
+			}
+		}()
+		c.State = StateOffline
 
-	// 退组
-	c.OutAllTGroup()
-	// 删除客户端
-	ClientM.DelClient(c.GetKey())
-	ClientM.DelClientConn(c)
-	//删除在线信息
-	DelUserOnlineInfo(c.GetKey())
+		// 退组
+		c.OutAllTGroup()
+		// 删除客户端
+		ClientM.DelClient(c.GetKey())
+		ClientM.DelClientConn(c)
+		//删除在线信息
+		DelUserOnlineInfo(c.GetKey())
 
-	//关闭chan
+		//关闭chan
+		c.closeSendChan()
+		// 回调
+		if Config.OnClientClose != nil {
+			Config.OnClientClose(c)
+		}
+		//logger.L.Info("Client.OnClose success", zap.String("uid", c.UserId))
+		closeClient = true
+	})
+
+	return closeClient
+}
+
+// 关闭send chan
+func (c *Client) closeSendChan() {
 	close(c.sendChan)
-
-	// 回调
-	if Config.OnClientClose != nil {
-		Config.OnClientClose(c)
-	}
-
 }
 
 /** 心跳保活 */

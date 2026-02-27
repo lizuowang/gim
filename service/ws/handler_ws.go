@@ -83,15 +83,16 @@ func (c *Handler) OnMessage(socket *gws.Conn, gwsMsg *gws.Message) {
 
 func (c *Handler) OnClose(socket *gws.Conn, err error) {
 	client, ok := ClientM.GetClient(c.GetUid(socket))
+	closeClient := false
 	if ok {
-		client.OnClose()
+		closeClient = client.OnClose()
 	}
 
 	//记录日志
 	if err != nil {
-		logger.L.Error("ws.OnClose 关闭连接 ", zap.String("uid", c.GetUid(socket)), zap.String("addr", socket.RemoteAddr().String()), zap.Any("error", err))
+		logger.L.Error("ws.OnClose 关闭连接 ", zap.String("uid", c.GetUid(socket)), zap.String("addr", socket.RemoteAddr().String()), zap.Bool("closeClient", closeClient), zap.Any("error", err))
 	} else {
-		logger.L.Info("ws.OnClose 关闭连接 ", zap.String("uid", c.GetUid(socket)), zap.String("addr", socket.RemoteAddr().String()))
+		logger.L.Info("ws.OnClose 关闭连接 ", zap.String("uid", c.GetUid(socket)), zap.String("addr", socket.RemoteAddr().String()), zap.Bool("closeClient", closeClient))
 	}
 
 }
